@@ -124,4 +124,27 @@ class AppViewModelTest {
         assertFalse(viewModel.state.value.loggedIn)
         assertNull(store.token)
     }
+
+    @Test
+    fun `a built-in server address is adopted on first start only`() {
+        val fresh = FakeSessionStore()
+        val first = AppViewModel(ModulentoRepository(fresh, ApiClient(), "https://kunde.example.com/")) {}
+        assertEquals("https://kunde.example.com", first.state.value.serverUrl)
+        assertEquals("https://kunde.example.com", fresh.serverUrl)
+        assertFalse(first.state.value.loggedIn)
+
+        assertTrue(first.saveServerUrl("other.example"))
+        val second = AppViewModel(ModulentoRepository(fresh, ApiClient(), "https://kunde.example.com")) {}
+        assertEquals("a changed address survives a restart", "https://other.example", second.state.value.serverUrl)
+    }
+
+    @Test
+    fun `without a usable built-in address the app still asks for one`() {
+        val empty = FakeSessionStore()
+        assertNull(AppViewModel(ModulentoRepository(empty, ApiClient(), "")) {}.state.value.serverUrl)
+
+        val broken = FakeSessionStore()
+        assertNull(AppViewModel(ModulentoRepository(broken, ApiClient(), "not a url")) {}.state.value.serverUrl)
+        assertNull(broken.serverUrl)
+    }
 }

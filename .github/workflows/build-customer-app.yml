@@ -1,0 +1,111 @@
+name: Betreiber-App bauen
+
+# The run name carries the caller's token: the workflow_dispatch API returns
+# no run id, so the caller finds its run by this title.
+run-name: "App-Build ${{ inputs.client_token }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Adresse der Website, z. B. https://kunde.example.com"
+        required: true
+        type: string
+      app_name:
+        description: "Name der App auf dem Gerät"
+        required: true
+        type: string
+      app_id_suffix:
+        description: "Optionaler Zusatz zur App-ID (a-z, 0-9, _), z. B. kunde1"
+        required: false
+        default: ""
+        type: string
+      client_token:
+        description: "Eindeutiger Token des Aufrufers zur Zuordnung des Laufs"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Inputs reach the shell only as environment variables, never pasted into
+    # a script: whatever a caller sends cannot become part of a command.
+    env:
+      SERVER_URL: ${{ inputs.server_url }}
+      APP_NAME: ${{ inputs.app_name }}
+      APP_ID_SUFFIX: ${{ inputs.app_id_suffix }}
+      CLIENT_TOKEN: ${{ inputs.client_token }}
+    steps:
+      - name: Eingaben prüfen
+        run: |
+          [[ "$CLIENT_TOKEN" =~ ^[A-Za-z0-9_-]{8,64}$ ]] || { echo "::error::client_token ist ungültig"; exit 1; }
+          [[ "$SERVER_URL" =~ ^https:// ]] || { echo "::error::server_url muss mit https:// beginnen"; exit 1; }
+          [[ -n "${APP_NAME// /}" ]] || { echo "::error::app_name fehlt"; exit 1; }
+          [[ "$APP_ID_SUFFIX" =~ ^([a-z][a-z0-9_]*)?$ ]] || { echo "::error::app_id_suffix ist ungültig"; exit 1; }
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Accepts the SDK licenses; the Android Gradle Plugin then downloads the
+      # platform and build tools the project asks for by itself.
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Keystore wiederherstellen
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            [[ -n "${!name}" ]] || { echo "::error::Secret $name fehlt"; exit 1; }
+          done
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > modulento-app-release.jks
+          # A .properties file treats a backslash as an escape character.
+          escape() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
+          {
+            echo "storeFile=modulento-app-release.jks"
+            echo "storePassword=$(escape "$ANDROID_KEYSTORE_PASSWORD")"
+            echo "keyAlias=$(escape "$ANDROID_KEY_ALIAS")"
+            echo "keyPassword=$(escape "$ANDROID_KEY_PASSWORD")"
+          } > keystore.properties
+
+      - name: Release-APK bauen
+        run: |
+          ./gradlew assembleRelease \
+            -PappServerUrl="$SERVER_URL" \
+            -PappLabel="$APP_NAME" \
+            -PappIdSuffix="$APP_ID_SUFFIX"
+
+      - name: Signatur prüfen
+        run: |
+          apk=app/build/outputs/apk/release/app-release.apk
+          [[ -f "$apk" ]] || { echo "::error::Keine signierte APK entstanden"; exit 1; }
+          build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify "$apk"
+
+      - name: Keystore entfernen
+        if: always()
+        run: rm -f modulento-app-release.jks keystore.properties
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ inputs.client_token }}
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 1

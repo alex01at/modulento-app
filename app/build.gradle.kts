@@ -12,6 +12,48 @@ val keystoreProps = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+// Optional branding at build time, see README ("Betreiber-Build"). Without these
+// properties the build is the neutral "Modulento" app that asks for the address.
+fun brandProperty(name: String): String =
+    (project.findProperty(name) as String?)?.trim().orEmpty()
+
+val appServerUrl = brandProperty("appServerUrl")
+val appLabel = brandProperty("appLabel").ifEmpty { "Modulento" }
+val appIdSuffix = brandProperty("appIdSuffix").trimStart('.')
+val appIconPath = brandProperty("appIconPath")
+
+if (appIdSuffix.isNotEmpty()) {
+    require(Regex("[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*").matches(appIdSuffix)) {
+        "appIdSuffix must consist of lowercase package segments (a-z, 0-9, _), got: $appIdSuffix"
+    }
+}
+
+/** Escapes a value for a Java string literal (BuildConfig). */
+fun javaLiteral(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+/** Escapes a value for an Android string resource (XML escaping is done by AGP). */
+fun stringResource(value: String): String {
+    val escaped = value.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"")
+    return if (escaped.startsWith("@") || escaped.startsWith("?")) "\\" + escaped else escaped
+}
+
+// A custom launcher icon replaces drawable/ic_launcher_foreground. It is copied
+// into a generated resource folder that the build types layer over "main".
+val brandIconRes = layout.buildDirectory.dir("generated/brandIcon/res").get().asFile
+val copyBrandIcon = if (appIconPath.isNotEmpty()) {
+    val source = file(appIconPath)
+    require(source.isFile && source.extension.lowercase() == "png") {
+        "appIconPath must point to an existing PNG file, got: $appIconPath"
+    }
+    tasks.register<Sync>("copyBrandIcon") {
+        from(source) { rename { "ic_launcher_foreground.png" } }
+        into(brandIconRes.resolve("drawable"))
+    }
+} else {
+    null
+}
+
 android {
     namespace = "at.modulento.app"
     compileSdk = 37
@@ -22,6 +64,16 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+
+        if (appIdSuffix.isNotEmpty()) applicationIdSuffix = ".$appIdSuffix"
+        buildConfigField("String", "DEFAULT_SERVER_URL", javaLiteral(appServerUrl))
+        // The only definition of app_name; it is deliberately not in strings.xml.
+        resValue("string", "app_name", stringResource(appLabel))
+    }
+
+    if (copyBrandIcon != null) {
+        sourceSets.getByName("debug").res.srcDir(brandIconRes)
+        sourceSets.getByName("release").res.srcDir(brandIconRes)
     }
 
     signingConfigs {
@@ -49,7 +101,13 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+        resValues = true
     }
+}
+
+if (copyBrandIcon != null) {
+    tasks.named("preBuild") { dependsOn(copyBrandIcon) }
 }
 
 dependencies {

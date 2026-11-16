@@ -6,6 +6,9 @@ import at.modulento.app.data.ModulentoRepository
 
 class ModulentoApp : Application() {
     val repository: ModulentoRepository by lazy {
-        ModulentoRepository(EncryptedSessionStore(this))
+        ModulentoRepository(
+            store = EncryptedSessionStore(this),
+            defaultServerUrl = BuildConfig.DEFAULT_SERVER_URL,
+        )
     }
 }

@@ -5,13 +5,17 @@ dient Betreibern (Verwaltung der eigenen Website) und deren Kundinnen und Kunden
 (Konto, Stöbern) – auch ohne Konto als Gast. Welche Bereiche jemand sieht,
 entscheidet allein die Antwort des Servers: Die App kennt keine Rollen.
 
-Stand: Grundgerüst (Phase 1). Die Server-Adresse wird in der App eingegeben; fest
-eingebaute Adresse und Betreiber-Branding zur Bauzeit folgen später.
+Stand: Grundgerüst (Phase 1). Ohne weitere Angaben entsteht die neutrale
+„Modulento"-App, in der die Server-Adresse eingegeben wird. Für einen Betreiber
+lassen sich Adresse, App-Name und Icon zur Bauzeit fest einbauen (siehe
+„Betreiber-Build").
 
 ## Funktionen
 
 - **Erststart / Einstellungen**: Eingabe der Server-Adresse. Ohne Adresse zeigt die
-  App nur dieses Formular. Fehlt das Schema, wird `https://` angenommen.
+  App nur dieses Formular. Fehlt das Schema, wird `https://` angenommen. Ist in
+  die APK eine Adresse eingebaut, entfällt das Formular beim ersten Start; ändern
+  lässt sich die Adresse weiterhin in den Einstellungen.
 - **Gast**: die öffentliche Startseite der Website in einer WebView, dazu
   „Anmelden" in der Kopfleiste.
 - **Anmelden**: E-Mail, Passwort und ein Gerätename (vorbelegt mit dem
@@ -68,6 +72,60 @@ keyPassword=…
 Ohne `keystore.properties` entsteht eine unsignierte, nicht installierbare
 `app-release-unsigned.apk`.
 
+Bei einem Keystore im Format PKCS12 (Standard von `keytool`) gibt es kein eigenes
+Schlüssel-Passwort: `keyPassword` muss denselben Wert haben wie `storePassword`.
+Weichen die beiden ab, bricht der Build bei `packageRelease` mit „Failed to read
+key … Given final block not properly padded" ab.
+
+### Betreiber-Build
+
+Vier optionale Gradle-Properties bauen die Angaben eines Betreibers fest ein. Jede
+kann einzeln entfallen; ohne sie bleibt der Build unverändert.
+
+| Property | Wirkung |
+|---|---|
+| `appServerUrl` | Server-Adresse, die beim ersten Start übernommen wird (`BuildConfig.DEFAULT_SERVER_URL`). Die Release-Variante spricht nur HTTPS. |
+| `appLabel` | Name der App auf dem Gerät (`app_name`), Standard „Modulento" |
+| `appIdSuffix` | Zusatz zur App-ID: `kunde1` ergibt `at.modulento.app.kunde1`. Nur damit lassen sich mehrere Builds nebeneinander installieren. Erlaubt sind Kleinbuchstaben, Ziffern und `_`. |
+| `appIconPath` | Pfad zu einer PNG-Datei, die den Vordergrund des App-Icons ersetzt |
+
+```bash
+./gradlew assembleRelease \
+  -PappServerUrl=https://kunde.example.com \
+  -PappLabel="Kunde GmbH" \
+  -PappIdSuffix=kunde1 \
+  -PappIconPath=/pfad/zu/icon.png
+```
+
+Zum Icon: Die PNG-Datei sollte quadratisch sein (432 × 432 px) und einen
+transparenten Hintergrund haben; das Motiv gehört in die mittleren zwei Drittel,
+der Rand wird vom System beschnitten. Die Hintergrundfarbe bleibt
+`ic_launcher_background` aus `app/src/main/res/values/colors.xml`. Geprüft ist
+nur, dass die Datei im Paket landet, nicht die Darstellung auf einem Gerät.
+
+`app_name` steht bewusst nicht in `strings.xml`, sondern wird allein von
+`app/build.gradle.kts` erzeugt.
+
+### Build über GitHub Actions
+
+`.github/workflows/build-customer-app.yml` baut eine signierte Betreiber-APK auf
+Anforderung (`workflow_dispatch`, Eingaben `server_url`, `app_name`,
+`app_id_suffix`, `client_token`) und legt sie einen Tag lang als Artefakt
+`app-<client_token>` ab. Der Lauf heißt „App-Build <client_token>", daran findet
+ihn das aufrufende Werkzeug wieder. Ein Icon nimmt der Workflow nicht entgegen.
+
+Der Workflow braucht vier Repository-Secrets (Settings → Secrets and variables →
+Actions):
+
+| Secret | Inhalt |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | der Keystore, Base64-kodiert (`base64 -w0 datei.jks`) |
+| `ANDROID_KEYSTORE_PASSWORD` | `storePassword` |
+| `ANDROID_KEY_ALIAS` | `keyAlias` |
+| `ANDROID_KEY_PASSWORD` | `keyPassword` (bei PKCS12 gleich dem Store-Passwort) |
+
+`.github/workflows/ci.yml` führt bei jedem Push und Pull Request die Tests aus.
+
 ## Gegen einen lokalen Server testen
 
 Die Release-Variante spricht ausschließlich HTTPS. Nur die **Debug-Variante**
@@ -112,7 +170,8 @@ Alle Oberflächentexte stehen in `app/src/main/res/values/strings.xml`.
 
 Die App kennt drei Phasen, jede mit eigenem Navigationsgraphen:
 
-1. **Keine Server-Adresse** → Eingabeformular.
+1. **Keine Server-Adresse** → Eingabeformular (entfällt, wenn eine Adresse
+   eingebaut ist).
 2. **Gast** → Website, Anmelden, Einstellungen.
 3. **Angemeldet** → `GET /api/v1/meta` wird geladen und im `AppViewModel` gehalten;
    daraus entstehen Tabs, Dashboard und Farben.
@@ -151,6 +210,8 @@ widerrufen (ein Fehler dabei verhindert das lokale Abmelden nicht).
 - Release-Build ohne Code-Verkleinerung (R8 aus).
 - Nur deutsche Oberfläche; die Texte des Servers (Menü, Hinweise) kommen in der
   Sprache des Kontos.
-- Registrierung, native Verwaltungsbildschirme, In-App-Update sowie fest
-  eingebaute Server-Adresse und Branding zur Bauzeit sind bewusst noch nicht
-  enthalten.
+- Eine eingebaute Server-Adresse wird nur übernommen, solange noch keine
+  gespeichert ist. Ein Update mit anderer eingebauter Adresse ändert eine
+  bestehende Installation nicht.
+- Registrierung, native Verwaltungsbildschirme und In-App-Update sind bewusst
+  noch nicht enthalten.

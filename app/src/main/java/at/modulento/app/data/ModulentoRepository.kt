@@ -5,11 +5,24 @@ import at.modulento.app.data.api.ApiClient
 import at.modulento.app.data.api.ApiException
 import at.modulento.app.data.api.Meta
 
-/** Single entry point for the ViewModels: session state plus the API calls. */
+/**
+ * Single entry point for the ViewModels: session state plus the API calls.
+ *
+ * [defaultServerUrl] is the address built into an operator's APK. It is adopted
+ * once, while no address is stored yet; afterwards the stored one counts, so a
+ * later change in the settings survives.
+ */
 class ModulentoRepository(
     private val store: SessionStore,
     private val client: ApiClient = ApiClient(),
+    defaultServerUrl: String = "",
 ) {
+
+    init {
+        if (store.serverUrl == null) {
+            ServerUrl.normalize(defaultServerUrl)?.let { store.serverUrl = it }
+        }
+    }
 
     val serverUrl: String? get() = store.serverUrl
     val isLoggedIn: Boolean get() = store.serverUrl != null && store.token != null
