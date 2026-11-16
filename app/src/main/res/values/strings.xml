@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Modulento</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_discover">Entdecken</string>
+    <string name="nav_admin">Verwaltung</string>
+    <string name="nav_account">Konto</string>
+    <string name="action_back">Zurück</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_login">Anmelden</string>
+    <string name="action_logout">Abmelden</string>
+    <string name="action_settings">Einstellungen</string>
+    <string name="action_retry">Erneut versuchen</string>
+    <string name="action_refresh">Aktualisieren</string>
+    <string name="action_save">Speichern</string>
+
+    <!-- Server address -->
+    <string name="server_title">Server-Adresse</string>
+    <string name="server_intro">Mit welcher Website soll sich die App verbinden? Gib die Adresse so ein, wie du sie im Browser aufrufst.</string>
+    <string name="server_label">Adresse der Website</string>
+    <string name="server_placeholder">https://www.beispiel.at</string>
+    <string name="server_invalid">Das ist keine gültige Web-Adresse.</string>
+    <string name="server_logout_hint">Wenn du die Adresse änderst, wirst du in der App abgemeldet.</string>
+
+    <!-- Login -->
+    <string name="login_title">Anmelden</string>
+    <string name="login_email">E-Mail-Adresse</string>
+    <string name="login_password">Passwort</string>
+    <string name="login_device">Name für dieses Gerät</string>
+    <string name="login_device_hint">Unter diesem Namen erscheint die Anmeldung in deinem Konto.</string>
+    <string name="login_server">Server: %1$s</string>
+    <string name="login_session_expired">Deine Anmeldung ist nicht mehr gültig. Bitte melde dich erneut an.</string>
+
+    <!-- Errors -->
+    <string name="error_invalid_credentials">E-Mail-Adresse oder Passwort stimmen nicht.</string>
+    <string name="error_too_many_attempts">Zu viele Anmeldeversuche. Bitte warte ein paar Minuten und versuche es dann erneut.</string>
+    <string name="error_email_unverified">Deine E-Mail-Adresse ist noch nicht bestätigt. Öffne den Link in der Bestätigungs-E-Mail und melde dich danach an.</string>
+    <string name="error_handoff_unavailable">Die Seite kann gerade nicht geöffnet werden. Bitte versuche es in einem Moment erneut.</string>
+    <string name="error_network">Der Server ist nicht erreichbar. Prüfe deine Internetverbindung und die Server-Adresse.</string>
+    <string name="error_invalid_response">Unter dieser Adresse antwortet kein passender Modulento-Server. Prüfe die Server-Adresse.</string>
+    <string name="error_server">Der Server hat einen Fehler gemeldet. Bitte versuche es später erneut.</string>
+    <string name="error_page_title">Seite nicht geladen</string>
+    <string name="error_page_text">Die Seite konnte nicht geladen werden. Prüfe deine Internetverbindung.</string>
+    <string name="error_meta_title">Daten nicht geladen</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_greeting">Hallo, %1$s</string>
+    <string name="dashboard_notices">Zu erledigen</string>
+    <string name="dashboard_admin_text">Website verwalten: %1$d Bereiche</string>
+    <string name="dashboard_discover_text">Die Website in der App ansehen</string>
+    <string name="dashboard_version">Modulento %1$s · API v%2$d</string>
+
+    <!-- Discover -->
+    <string name="discover_open_account">Mein Konto auf der Website öffnen</string>
+    <string name="discover_account_title">Mein Konto</string>
+
+    <!-- Account -->
+    <string name="account_display_name">Anzeigename</string>
+    <string name="account_email">E-Mail-Adresse</string>
+    <string name="account_id">Kontonummer</string>
+    <string name="account_locale">Sprache</string>
+    <string name="account_created_at">Konto erstellt am</string>
+    <string name="account_demo_mode">Demo-Modus</string>
+    <string name="account_server">Server</string>
+    <string name="value_yes">Ja</string>
+    <string name="value_no">Nein</string>
+    <string name="value_none">Nicht angegeben</string>
+</resources>
