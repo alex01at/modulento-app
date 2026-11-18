@@ -51,16 +51,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      # Accepts the SDK licenses; the Android Gradle Plugin then downloads the
-      # platform and build tools the project asks for by itself.
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
+      # ubuntu-latest already ships an Android SDK with its licenses accepted
+      # (ANDROID_HOME is preset); the Android Gradle Plugin downloads whatever
+      # platform/build-tools version the project asks for on its own. The
+      # separate "android-actions/setup-android" step tried to install a
+      # package ("tools") current SDK repositories no longer offer and
+      # failed outright - removed rather than worked around.
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
 
